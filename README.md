@@ -1,6 +1,6 @@
 # MCP server for Obsidian
 
-MCP server to interact with Obsidian via the Local REST API community plugin.
+MCP server to interact with Obsidian via the Local REST API community plugin, built with FastMCP framework.
 
 <a href="https://glama.ai/mcp/servers/3wko1bhuek"><img width="380" height="200" src="https://glama.ai/mcp/servers/3wko1bhuek/badge" alt="server for Obsidian MCP server" /></a>
 
@@ -40,7 +40,11 @@ There are two ways to configure the environment with the Obsidian REST API Key.
   "mcp-obsidian": {
     "command": "uvx",
     "args": [
-      "mcp-obsidian"
+      "mcp-obsidian",
+      "--transport",
+      "sse",
+      "--port",
+      "8000"
     ],
     "env": {
       "OBSIDIAN_API_KEY": "<your_api_key_here>",
@@ -81,6 +85,72 @@ On MacOS: `~/Library/Application\ Support/Claude/claude_desktop_config.json`
 
 On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
 
+## Usage Modes
+
+### Mode 1: Standalone Server (Recommended for Multi-Client)
+
+**Step 1: Start the Server Independently**
+
+Open a terminal, navigate to the project directory, and run:
+
+```bash
+# Start with SSE transport (recommended for multi-client)
+uv run mcp-obsidian --transport sse --port 8000
+
+# Or start with stdio transport (single client)
+uv run mcp-obsidian --transport stdio
+
+# Or start with streamable-http transport
+uv run mcp-obsidian --transport streamable-http --port 8000
+```
+
+Keep this terminal window open for the server to remain active.
+
+**Step 2: Configure Client to Connect**
+
+Configure your MCP client to connect to the running server:
+
+<details>
+  <summary>Claude Desktop Configuration (SSE Mode)</summary>
+  
+```json
+{
+  "mcpServers": {
+    "mcp-obsidian": {
+      "transport": "sse",
+      "url": "http://127.0.0.1:8000/mcp",
+      "env": {
+        "OBSIDIAN_API_KEY": "<your_api_key_here>",
+        "OBSIDIAN_HOST": "<your_obsidian_host>",
+        "OBSIDIAN_PORT": "<your_obsidian_port>"
+      }
+    }
+  }
+}
+```
+</details>
+
+<details>
+  <summary>mcp-agent Configuration (SSE Mode)</summary>
+  
+```yaml
+# mcp_agent.config.yaml
+mcp:
+  servers:
+    obsidian:
+      transport: "sse"
+      url: "http://127.0.0.1:8000/mcp"
+      env:
+        OBSIDIAN_API_KEY: "<your_api_key_here>"
+        OBSIDIAN_HOST: "<your_obsidian_host>"
+        OBSIDIAN_PORT: "<your_obsidian_port>"
+```
+</details>
+
+### Mode 2: Client-Launched Server (Single Client Only)
+
+For single client usage, you can let the client launch the server automatically:
+
 <details>
   <summary>Development/Unpublished Servers Configuration</summary>
   
@@ -93,7 +163,9 @@ On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
         "--directory",
         "<dir_to>/mcp-obsidian",
         "run",
-        "mcp-obsidian"
+        "mcp-obsidian",
+        "--transport",
+        "stdio"
       ],
       "env": {
         "OBSIDIAN_API_KEY": "<your_api_key_here>",
@@ -115,7 +187,9 @@ On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
     "mcp-obsidian": {
       "command": "uvx",
       "args": [
-        "mcp-obsidian"
+        "mcp-obsidian",
+        "--transport",
+        "stdio"
       ],
       "env": {
         "OBSIDIAN_API_KEY": "<YOUR_OBSIDIAN_API_KEY>",
@@ -128,18 +202,27 @@ On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
 ```
 </details>
 
+**Note**: Mode 2 is limited to single client usage and uses stdio transport. For multi-client support, use Mode 1.
+
 ## Development
 
 ### Running as a Network Server (for Multi-Client Support)
 
-The default `stdio` transport limits the server to a single client. To support multiple clients simultaneously, you can run the server in HTTP mode. This is the recommended approach for any shared or multi-user environment.
+The server now uses FastMCP framework and supports multiple transport protocols. The default `stdio` transport limits the server to a single client. To support multiple clients simultaneously, you can run the server in SSE mode. This is the recommended approach for any shared or multi-user environment.
 
 **Step 1: Start the Server**
 
-Open a terminal, navigate to the project directory, and run the following command. This will start a persistent web server listening on `http://127.0.0.1:8000`.
+Open a terminal, navigate to the project directory, and run one of the following commands:
 
 ```bash
-uv run mcp-obsidian
+# Start with SSE transport (recommended for multi-client)
+uv run mcp-obsidian --transport sse --port 8000
+
+# Start with stdio transport (single client)
+uv run mcp-obsidian --transport stdio
+
+# Start with streamable-http transport
+uv run mcp-obsidian --transport streamable-http --port 8000
 ```
 
 You must keep this terminal window open for the server to remain active.
@@ -166,6 +249,14 @@ mcp:
 
 This change fundamentally alters the server's architecture from a single-use tool to a shareable service.
 
+### Transport Options
+
+The server supports three transport protocols:
+
+- **stdio**: Standard input/output transport (default, single client)
+- **sse**: Server-Sent Events transport (recommended for multi-client)
+- **streamable-http**: Streamable HTTP transport
+
 ### Building
 
 To prepare the package for distribution:
@@ -183,7 +274,7 @@ experience, we strongly recommend using the [MCP Inspector](https://github.com/m
 You can launch the MCP Inspector via [`npm`](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm) with this command:
 
 ```bash
-npx @modelcontextprotocol/inspector uv --directory /path/to/mcp-obsidian run mcp-obsidian
+npx @modelcontextprotocol/inspector uv --directory /path/to/mcp-obsidian run mcp-obsidian --transport sse --port 8000
 ```
 
 Upon launching, the Inspector will display a URL that you can access in your browser to begin debugging.
